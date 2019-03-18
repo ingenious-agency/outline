@@ -50,7 +50,7 @@
         "description": "Allows each team to have a different subdomain. Not recommend when self hosting"
       },
       "URL": {
-        "description": "https://{your app name}.herokuapp.com",
+        "description": "https://ingenious-wiki.herokuapp.com",
         "required": true
       },
       "GOOGLE_CLIENT_ID": {

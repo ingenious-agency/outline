@@ -18,7 +18,7 @@ router.get('slack', async ctx => {
   ctx.cookies.set('state', state, {
     httpOnly: false,
     expires: addHours(new Date(), 1),
-    domain: stripSubdomain(ctx.request.hostname),
+    domain: process.env.COOKIE_DOMAIM || stripSubdomain(ctx.request.hostname),
   });
   ctx.redirect(slackAuth(state));
 });

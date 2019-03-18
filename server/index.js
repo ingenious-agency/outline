@@ -71,6 +71,7 @@ if (process.env.NODE_ENV === 'development') {
 
   app.use(mount('/emails', emails));
 } else if (process.env.NODE_ENV === 'production') {
+  if (process.env.ENABLE_LOG) app.use(logger());
   // Force HTTPS on all pages
   app.use(
     enforceHttps({
