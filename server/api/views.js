@@ -13,7 +13,7 @@ router.post('views.list', auth(), async ctx => {
   ctx.assertUuid(documentId, 'documentId is required');
 
   const user = ctx.state.user;
-  const document = await Document.findById(documentId);
+  const document = await Document.findByPk(documentId);
   authorize(user, 'read', document);
 
   const views = await View.findAll({
@@ -27,10 +27,8 @@ router.post('views.list', auth(), async ctx => {
     ],
   });
 
-  const data = views.map(view => presentView(ctx, view));
-
   ctx.body = {
-    data,
+    data: views.map(presentView),
   };
 });
 
@@ -39,7 +37,7 @@ router.post('views.create', auth(), async ctx => {
   ctx.assertUuid(documentId, 'documentId is required');
 
   const user = ctx.state.user;
-  const document = await Document.findById(documentId);
+  const document = await Document.findByPk(documentId);
   authorize(user, 'read', document);
 
   await View.increment({ documentId, userId: user.id });

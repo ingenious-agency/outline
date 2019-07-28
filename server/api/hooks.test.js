@@ -1,6 +1,6 @@
 /* eslint-disable flowtype/require-valid-file-annotation */
 import TestServer from 'fetch-test-server';
-import app from '..';
+import app from '../app';
 import { Authentication } from '../models';
 import { flushdb, seed } from '../test/support';
 import { buildDocument, buildUser } from '../test/factories';
@@ -126,6 +126,34 @@ describe('#hooks.slack', async () => {
     expect(body.attachments[0].text).toEqual(
       'This title *contains* a search term'
     );
+  });
+
+  it('should respond with help content for help keyword', async () => {
+    const user = await buildUser();
+    const res = await server.post('/api/hooks.slack', {
+      body: {
+        token: process.env.SLACK_VERIFICATION_TOKEN,
+        user_id: user.serviceId,
+        text: 'help',
+      },
+    });
+    const body = await res.json();
+    expect(res.status).toEqual(200);
+    expect(body.text.includes('How to use')).toEqual(true);
+  });
+
+  it('should respond with help content for no keyword', async () => {
+    const user = await buildUser();
+    const res = await server.post('/api/hooks.slack', {
+      body: {
+        token: process.env.SLACK_VERIFICATION_TOKEN,
+        user_id: user.serviceId,
+        text: '',
+      },
+    });
+    const body = await res.json();
+    expect(res.status).toEqual(200);
+    expect(body.text.includes('How to use')).toEqual(true);
   });
 
   it('should respond with error if unknown user', async () => {

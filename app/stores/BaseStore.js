@@ -65,6 +65,10 @@ export default class BaseStore<T: BaseModel> {
     return this.create(params);
   }
 
+  get(id: string): ?T {
+    return this.data.get(id);
+  }
+
   @action
   async create(params: Object) {
     if (!this.actions.includes('create')) {
@@ -156,7 +160,6 @@ export default class BaseStore<T: BaseModel> {
 
   @computed
   get orderedData(): T[] {
-    // $FlowIssue
     return orderBy(Array.from(this.data.values()), 'createdAt', 'desc');
   }
 }

@@ -113,7 +113,7 @@ router.get('/', async ctx => {
   ) {
     const domain = parseDomain(ctx.request.hostname);
     const subdomain = domain ? domain.subdomain : undefined;
-    const team = await Team.find({
+    const team = await Team.findOne({
       where: { subdomain },
     });
     if (team) {
@@ -146,11 +146,12 @@ router.get('/', async ctx => {
   );
 });
 
-// Other
 router.get('/robots.txt', ctx => (ctx.body = robotsResponse(ctx)));
 
 // catch all for react app
-router.get('*', async ctx => {
+router.get('*', async (ctx, next) => {
+  if (ctx.request.path === '/realtime/') return next();
+
   await renderapp(ctx);
   if (!ctx.status) ctx.throw(new NotFoundError());
 });

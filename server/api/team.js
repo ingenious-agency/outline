@@ -15,7 +15,7 @@ router.post('team.update', auth(), async ctx => {
   const endpoint = publicS3Endpoint();
 
   const user = ctx.state.user;
-  const team = await Team.findById(user.teamId);
+  const team = await Team.findByPk(user.teamId);
   authorize(user, 'update', team);
 
   if (process.env.SUBDOMAINS_ENABLED === 'true') {
@@ -30,7 +30,9 @@ router.post('team.update', auth(), async ctx => {
   }
   await team.save();
 
-  ctx.body = { data: await presentTeam(ctx, team) };
+  ctx.body = {
+    data: presentTeam(team),
+  };
 });
 
 export default router;

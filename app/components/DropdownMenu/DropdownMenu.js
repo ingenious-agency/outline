@@ -8,21 +8,32 @@ import styled from 'styled-components';
 import Flex from 'shared/components/Flex';
 import { fadeAndScaleIn } from 'shared/styles/animations';
 
+let previousClosePortal;
+
+type Children =
+  | React.Node
+  | ((options: { closePortal: () => void }) => React.Node);
+
 type Props = {
   label: React.Node,
   onOpen?: () => void,
   onClose?: () => void,
-  children?: React.Node,
+  children?: Children,
   className?: string,
   style?: Object,
+  position?: 'left' | 'right' | 'center',
 };
 
 @observer
 class DropdownMenu extends React.Component<Props> {
   @observable top: number;
   @observable right: number;
+  @observable left: number;
 
-  handleOpen = (openPortal: (SyntheticEvent<*>) => *) => {
+  handleOpen = (
+    openPortal: (SyntheticEvent<*>) => void,
+    closePortal: () => void
+  ) => {
     return (ev: SyntheticMouseEvent<*>) => {
       ev.preventDefault();
       const currentTarget = ev.currentTarget;
@@ -32,14 +43,27 @@ class DropdownMenu extends React.Component<Props> {
         const bodyRect = document.body.getBoundingClientRect();
         const targetRect = currentTarget.getBoundingClientRect();
         this.top = targetRect.bottom - bodyRect.top;
-        this.right = bodyRect.width - targetRect.left - targetRect.width;
+
+        if (this.props.position === 'left') {
+          this.left = targetRect.left;
+        } else if (this.props.position === 'center') {
+          this.left = targetRect.left + targetRect.width / 2;
+        } else {
+          this.right = bodyRect.width - targetRect.left - targetRect.width;
+        }
+
+        // attempt to keep only one flyout menu open at once
+        if (previousClosePortal) {
+          previousClosePortal();
+        }
+        previousClosePortal = closePortal;
         openPortal(ev);
       }
     };
   };
 
   render() {
-    const { className, label, children } = this.props;
+    const { className, label, position, children } = this.props;
 
     return (
       <div className={className}>
@@ -51,19 +75,32 @@ class DropdownMenu extends React.Component<Props> {
         >
           {({ closePortal, openPortal, portal }) => (
             <React.Fragment>
-              <Label onClick={this.handleOpen(openPortal)}>{label}</Label>
+              <Label onClick={this.handleOpen(openPortal, closePortal)}>
+                {label}
+              </Label>
               {portal(
-                <Menu
-                  onClick={ev => {
-                    ev.stopPropagation();
-                    closePortal();
-                  }}
-                  style={this.props.style}
+                <Position
+                  position={position}
                   top={this.top}
+                  left={this.left}
                   right={this.right}
                 >
-                  {children}
-                </Menu>
+                  <Menu
+                    onClick={
+                      typeof children === 'function'
+                        ? undefined
+                        : ev => {
+                            ev.stopPropagation();
+                            closePortal();
+                          }
+                    }
+                    style={this.props.style}
+                  >
+                    {typeof children === 'function'
+                      ? children({ closePortal })
+                      : children}
+                  </Menu>
+                </Position>
               )}
             </React.Fragment>
           )}
@@ -81,15 +118,19 @@ const Label = styled(Flex).attrs({
   cursor: pointer;
 `;
 
-const Menu = styled.div`
-  animation: ${fadeAndScaleIn} 200ms ease;
-  transform-origin: 75% 0;
-
+const Position = styled.div`
   position: absolute;
-  right: ${({ right }) => right}px;
+  ${({ left }) => (left !== undefined ? `left: ${left}px` : '')};
+  ${({ right }) => (right !== undefined ? `right: ${right}px` : '')};
   top: ${({ top }) => top}px;
   z-index: 1000;
+  transform: ${props =>
+    props.position === 'center' ? 'translateX(-50%)' : 'initial'};
+`;
 
+const Menu = styled.div`
+  animation: ${fadeAndScaleIn} 200ms ease;
+  transform-origin: ${props => (props.left !== undefined ? '25%' : '75%')} 0;
   background: ${props => props.theme.menuBackground};
   border-radius: 2px;
   padding: 0.5em 0;

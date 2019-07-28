@@ -8,6 +8,7 @@ import { MoreIcon } from 'outline-icons';
 import Modal from 'components/Modal';
 import CollectionPermissions from 'scenes/CollectionPermissions';
 
+import { newDocumentUrl } from 'utils/routeHelpers';
 import getDataTransferFiles from 'utils/getDataTransferFiles';
 import importFile from 'utils/importFile';
 import Collection from 'models/Collection';
@@ -17,12 +18,13 @@ import { DropdownMenu, DropdownMenuItem } from 'components/DropdownMenu';
 
 type Props = {
   label?: React.Node,
-  onOpen?: () => *,
-  onClose?: () => *,
+  position?: 'left' | 'right' | 'center',
   ui: UiStore,
   documents: DocumentsStore,
   collection: Collection,
   history: Object,
+  onOpen?: () => void,
+  onClose?: () => void,
 };
 
 @observer
@@ -34,7 +36,7 @@ class CollectionMenu extends React.Component<Props> {
   onNewDocument = (ev: SyntheticEvent<*>) => {
     ev.preventDefault();
     const { collection } = this.props;
-    this.props.history.push(`${collection.url}/new`);
+    this.props.history.push(newDocumentUrl(collection.id));
   };
 
   onImportDocument = (ev: SyntheticEvent<*>) => {
@@ -87,7 +89,7 @@ class CollectionMenu extends React.Component<Props> {
   };
 
   render() {
-    const { collection, label, onOpen, onClose } = this.props;
+    const { collection, label, position, onOpen, onClose } = this.props;
 
     return (
       <React.Fragment>
@@ -111,6 +113,7 @@ class CollectionMenu extends React.Component<Props> {
           label={label || <MoreIcon />}
           onOpen={onOpen}
           onClose={onClose}
+          position={position}
         >
           {collection && (
             <React.Fragment>

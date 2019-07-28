@@ -9,6 +9,8 @@ import { CloseIcon } from 'outline-icons';
 import { fadeAndScaleIn } from 'shared/styles/animations';
 import Flex from 'shared/components/Flex';
 
+ReactModal.setAppElement('#root');
+
 type Props = {
   children?: React.Node,
   isOpen: boolean,
@@ -80,6 +82,7 @@ const StyledModal = styled(ReactModal)`
   overflow-x: hidden;
   overflow-y: auto;
   background: ${props => props.theme.background};
+  transition: ${props => props.theme.backgroundTransition};
   padding: 13vh 2rem 2rem;
   outline: none;
 `;

@@ -10,7 +10,6 @@ import keydown from 'react-keydown';
 import Analytics from 'components/Analytics';
 import Flex from 'shared/components/Flex';
 import {
-  documentEditUrl,
   homeUrl,
   searchUrl,
   matchDocumentSlug as slug,
@@ -72,16 +71,6 @@ class Layout extends React.Component<Props> {
     this.redirectTo = homeUrl();
   }
 
-  @keydown('e')
-  goToEdit(ev) {
-    const activeDocument = this.props.documents.active;
-    if (!activeDocument) return;
-
-    ev.preventDefault();
-    ev.stopPropagation();
-    this.redirectTo = documentEditUrl(activeDocument);
-  }
-
   @keydown('shift+/')
   openKeyboardShortcuts() {
     this.props.ui.setActiveModal('keyboard-shortcuts');
@@ -137,6 +126,7 @@ class Layout extends React.Component<Props> {
 
 const Container = styled(Flex)`
   background: ${props => props.theme.background};
+  transition: ${props => props.theme.backgroundTransition};
   position: relative;
   width: 100vw;
   min-height: 100%;

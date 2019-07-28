@@ -9,6 +9,7 @@ import {
   CollectionIcon,
   PrivateCollectionIcon,
   NewDocumentIcon,
+  PlusIcon,
   PinIcon,
 } from 'outline-icons';
 import RichMarkdownEditor from 'rich-markdown-editor';
@@ -86,7 +87,7 @@ class CollectionScene extends React.Component<Props> {
     ev.preventDefault();
 
     if (this.collection) {
-      this.redirectTo = `${this.collection.url}/new`;
+      this.redirectTo = newDocumentUrl(this.collection.id);
     }
   };
 
@@ -103,13 +104,13 @@ class CollectionScene extends React.Component<Props> {
     return (
       <Actions align="center" justify="flex-end">
         <Action>
-          <CollectionMenu collection={this.collection} />
+          <Button onClick={this.onNewDocument} icon={<PlusIcon />}>
+            New doc
+          </Button>
         </Action>
         <Separator />
         <Action>
-          <a onClick={this.onNewDocument}>
-            <NewDocumentIcon />
-          </a>
+          <CollectionMenu collection={this.collection} />
         </Action>
       </Actions>
     );
@@ -139,7 +140,7 @@ class CollectionScene extends React.Component<Props> {
                   documents yet.<br />Get started by creating a new one!
                 </HelpText>
                 <Wrapper>
-                  <Link to={newDocumentUrl(collection)}>
+                  <Link to={newDocumentUrl(collection.id)}>
                     <Button icon={<NewDocumentIcon color={theme.buttonText} />}>
                       Create a document
                     </Button>
@@ -195,7 +196,7 @@ class CollectionScene extends React.Component<Props> {
                     <Subheading>
                       <TinyPinIcon size={18} /> Pinned
                     </Subheading>
-                    <DocumentList documents={pinnedDocuments} />
+                    <DocumentList documents={pinnedDocuments} showPin />
                   </React.Fragment>
                 )}
 
@@ -222,6 +223,7 @@ class CollectionScene extends React.Component<Props> {
                       )}
                       fetch={documents.fetchAlphabetical}
                       options={{ collection: collection.id }}
+                      showPin
                     />
                   </Route>
                   <Route path={collectionUrl(collection.id, 'old')}>
@@ -232,6 +234,7 @@ class CollectionScene extends React.Component<Props> {
                       )}
                       fetch={documents.fetchLeastRecentlyUpdated}
                       options={{ collection: collection.id }}
+                      showPin
                     />
                   </Route>
                   <Route path={collectionUrl(collection.id, 'recent')}>
@@ -243,6 +246,7 @@ class CollectionScene extends React.Component<Props> {
                       fetch={documents.fetchRecentlyPublished}
                       options={{ collection: collection.id }}
                       showPublished
+                      showPin
                     />
                   </Route>
                   <Route path={collectionUrl(collection.id)}>
@@ -252,6 +256,7 @@ class CollectionScene extends React.Component<Props> {
                       )}
                       fetch={documents.fetchRecentlyUpdated}
                       options={{ collection: collection.id }}
+                      showPin
                     />
                   </Route>
                 </Switch>

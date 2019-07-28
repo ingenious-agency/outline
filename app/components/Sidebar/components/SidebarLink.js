@@ -32,13 +32,6 @@ class SidebarLink extends React.Component<Props> {
     paddingLeft: `${(this.props.depth || 0) * 16 + 16}px`,
   };
 
-  activeStyle = {
-    color: this.props.theme.text,
-    background: this.props.theme.sidebarItemBackground,
-    fontWeight: 600,
-    ...this.style,
-  };
-
   componentDidMount() {
     if (this.props.expanded) this.handleExpand();
   }
@@ -75,12 +68,18 @@ class SidebarLink extends React.Component<Props> {
       exact,
     } = this.props;
     const showDisclosure = !!children && !hideDisclosure;
+    const activeStyle = {
+      color: this.props.theme.text,
+      background: this.props.theme.sidebarItemBackground,
+      fontWeight: 600,
+      ...this.style,
+    };
 
     return (
-      <Wrapper menuOpen={menuOpen} column>
+      <Wrapper column>
         <StyledNavLink
-          activeStyle={this.activeStyle}
-          style={active ? this.activeStyle : this.style}
+          activeStyle={activeStyle}
+          style={active ? activeStyle : this.style}
           onClick={onClick}
           exact={exact !== false}
           to={to}
@@ -93,9 +92,9 @@ class SidebarLink extends React.Component<Props> {
             )}
             {label}
           </Label>
+          {menu && <Action menuOpen={menuOpen}>{menu}</Action>}
         </StyledNavLink>
         {this.expanded && children}
-        {menu && <Action>{menu}</Action>}
       </Wrapper>
     );
   }
@@ -108,23 +107,8 @@ const IconWrapper = styled.span`
   height: 24px;
 `;
 
-const StyledNavLink = styled(NavLink)`
-  display: flex;
-  position: relative;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  padding: 4px 16px;
-  border-radius: 4px;
-  color: ${props => props.theme.sidebarText};
-  font-size: 15px;
-  cursor: pointer;
-
-  &:hover {
-    color: ${props => props.theme.text};
-  }
-`;
-
 const Action = styled.span`
+  display: ${props => (props.menuOpen ? 'inline' : 'none')};
   position: absolute;
   top: 4px;
   right: 4px;
@@ -141,11 +125,19 @@ const Action = styled.span`
   }
 `;
 
-const Wrapper = styled(Flex)`
+const StyledNavLink = styled(NavLink)`
+  display: flex;
   position: relative;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 4px 16px;
+  border-radius: 4px;
+  color: ${props => props.theme.sidebarText};
+  font-size: 15px;
+  cursor: pointer;
 
-  > ${Action} {
-    display: ${props => (props.menuOpen ? 'inline' : 'none')};
+  &:hover {
+    color: ${props => props.theme.text};
   }
 
   &:hover {
@@ -153,6 +145,10 @@ const Wrapper = styled(Flex)`
       display: inline;
     }
   }
+`;
+
+const Wrapper = styled(Flex)`
+  position: relative;
 `;
 
 const Label = styled.div`

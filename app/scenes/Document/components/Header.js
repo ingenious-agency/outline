@@ -6,20 +6,21 @@ import { observer, inject } from 'mobx-react';
 import { Redirect } from 'react-router-dom';
 import styled from 'styled-components';
 import breakpoint from 'styled-components-breakpoint';
-import { NewDocumentIcon } from 'outline-icons';
-import { transparentize } from 'polished';
+import { EditIcon, PlusIcon } from 'outline-icons';
+import { transparentize, darken } from 'polished';
 import Document from 'models/Document';
 import AuthStore from 'stores/AuthStore';
 import { documentEditUrl } from 'utils/routeHelpers';
 import { meta } from 'utils/keyboard';
 
 import Flex from 'shared/components/Flex';
-import Breadcrumb from './Breadcrumb';
+import Breadcrumb from 'shared/components/Breadcrumb';
 import DocumentMenu from 'menus/DocumentMenu';
 import NewChildDocumentMenu from 'menus/NewChildDocumentMenu';
 import DocumentShare from 'scenes/DocumentShare';
 import Button from 'components/Button';
 import Modal from 'components/Modal';
+import Badge from 'components/Badge';
 import Collaborators from 'components/Collaborators';
 import { Action, Separator } from 'components/Actions';
 
@@ -29,6 +30,7 @@ type Props = {
   isEditing: boolean,
   isSaving: boolean,
   isPublishing: boolean,
+  publishingIsDisabled: boolean,
   savingIsDisabled: boolean,
   onDiscard: () => *,
   onSave: ({
@@ -98,10 +100,13 @@ class Header extends React.Component<Props> {
       isPublishing,
       isSaving,
       savingIsDisabled,
+      publishingIsDisabled,
       auth,
     } = this.props;
-    const canShareDocuments = auth.team && auth.team.sharing;
+    const canShareDocuments =
+      auth.team && auth.team.sharing && !document.isArchived;
     const canToggleEmbeds = auth.team && auth.team.documentEmbeds;
+    const canEdit = !document.isArchived && !isEditing;
 
     return (
       <Actions
@@ -123,7 +128,7 @@ class Header extends React.Component<Props> {
         </Modal>
         <Breadcrumb document={document} />
         <Title isHidden={!this.isScrolled} onClick={this.handleClickTitle}>
-          {document.title}
+          {document.title} {document.isArchived && <Badge>Archived</Badge>}
         </Title>
         <Wrapper align="center" justify="flex-end">
           {!isDraft && !isEditing && <Collaborators document={document} />}
@@ -152,7 +157,7 @@ class Header extends React.Component<Props> {
               <Action>
                 <Button
                   onClick={this.handleSave}
-                  title={`Save changes ${isDraft ? '' : `${meta}+Enter`}`}
+                  title={`Save changes (${meta}+Enter)`}
                   disabled={savingIsDisabled}
                   isSaving={isSaving}
                   neutral={isDraft}
@@ -167,42 +172,52 @@ class Header extends React.Component<Props> {
             <Action>
               <Button
                 onClick={this.handlePublish}
-                title={`Publish document (${meta}+Enter)`}
-                disabled={savingIsDisabled}
+                title="Publish document"
+                disabled={publishingIsDisabled}
                 small
               >
                 {isPublishing ? 'Publishing…' : 'Publish'}
               </Button>
             </Action>
           )}
-          {!isEditing && (
+          {canEdit && (
             <Action>
-              <Button onClick={this.handleEdit} neutral small>
+              <Button
+                icon={<EditIcon />}
+                onClick={this.handleEdit}
+                neutral
+                small
+              >
                 Edit
               </Button>
             </Action>
           )}
-          {!isEditing && (
-            <Action>
-              <DocumentMenu
-                document={document}
-                showToggleEmbeds={canToggleEmbeds}
-                showPrint
-              />
-            </Action>
-          )}
-          {!isEditing &&
+          {canEdit &&
             !isDraft && (
-              <React.Fragment>
-                <Separator />
-                <Action>
-                  <NewChildDocumentMenu
-                    document={document}
-                    label={<NewDocumentIcon />}
-                  />
-                </Action>
-              </React.Fragment>
+              <Action>
+                <NewChildDocumentMenu
+                  document={document}
+                  label={
+                    <Button icon={<PlusIcon />} neutral>
+                      New doc
+                    </Button>
+                  }
+                />
+              </Action>
             )}
+
+          {!isEditing && (
+            <React.Fragment>
+              <Separator />
+              <Action>
+                <DocumentMenu
+                  document={document}
+                  showToggleEmbeds={canToggleEmbeds}
+                  showPrint
+                />
+              </Action>
+            </React.Fragment>
+          )}
         </Wrapper>
       </Actions>
     );
@@ -230,7 +245,10 @@ const Actions = styled(Flex)`
   z-index: 1;
   background: ${props => transparentize(0.1, props.theme.background)};
   border-bottom: 1px solid
-    ${props => (props.isCompact ? props.theme.background : 'transparent')};
+    ${props =>
+      props.isCompact
+        ? darken(0.05, props.theme.sidebarBackground)
+        : 'transparent'};
   padding: 12px;
   transition: all 100ms ease-out;
   transform: translate3d(0, 0, 0);
@@ -249,6 +267,7 @@ const Title = styled.div`
   font-size: 16px;
   font-weight: 600;
   text-align: center;
+  align-items: center;
   justify-content: center;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -260,7 +279,7 @@ const Title = styled.div`
   width: 0;
 
   ${breakpoint('tablet')`	
-    display: block;
+    display: flex;
     flex-grow: 1;
   `};
 `;

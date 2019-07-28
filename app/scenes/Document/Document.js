@@ -22,11 +22,14 @@ import { emojiToUrl } from 'utils/emoji';
 import Header from './components/Header';
 import DocumentMove from './components/DocumentMove';
 import Branding from './components/Branding';
+import Backlinks from './components/Backlinks';
 import ErrorBoundary from 'components/ErrorBoundary';
 import LoadingPlaceholder from 'components/LoadingPlaceholder';
 import LoadingIndicator from 'components/LoadingIndicator';
 import CenteredContent from 'components/CenteredContent';
 import PageTitle from 'components/PageTitle';
+import Notice from 'shared/components/Notice';
+import Time from 'shared/components/Time';
 import Search from 'scenes/Search';
 import Error404 from 'scenes/Error404';
 import ErrorOffline from 'scenes/ErrorOffline';
@@ -77,6 +80,7 @@ class DocumentScene extends React.Component<Props> {
   @observable isSaving: boolean = false;
   @observable isPublishing: boolean = false;
   @observable isDirty: boolean = false;
+  @observable isEmpty: boolean = true;
   @observable notFound: boolean = false;
   @observable moveModalOpen: boolean = false;
 
@@ -98,13 +102,27 @@ class DocumentScene extends React.Component<Props> {
   @keydown('m')
   goToMove(ev) {
     ev.preventDefault();
-    if (this.document) this.props.history.push(documentMoveUrl(this.document));
+
+    if (this.document && !this.document.isArchived && !this.document.isDraft) {
+      this.props.history.push(documentMoveUrl(this.document));
+    }
+  }
+
+  @keydown('e')
+  goToEdit(ev) {
+    ev.preventDefault();
+
+    if (this.document && !this.document.isArchived) {
+      this.props.history.push(documentEditUrl(this.document));
+    }
   }
 
   @keydown('esc')
   goBack(ev) {
-    ev.preventDefault();
-    this.props.history.goBack();
+    if (this.isEditing) {
+      ev.preventDefault();
+      this.props.history.goBack();
+    }
   }
 
   @keydown('h')
@@ -123,9 +141,9 @@ class DocumentScene extends React.Component<Props> {
     if (props.newDocument) {
       this.document = new Document(
         {
-          collection: { id: props.match.params.id },
-          parentDocument: new URLSearchParams(props.location.search).get(
-            'parentDocument'
+          collectionId: props.match.params.id,
+          parentDocumentId: new URLSearchParams(props.location.search).get(
+            'parentDocumentId'
           ),
           title: '',
           text: '',
@@ -150,11 +168,16 @@ class DocumentScene extends React.Component<Props> {
       }
 
       this.isDirty = false;
+      this.isEmpty = false;
 
       const document = this.document;
 
       if (document) {
         this.props.ui.setActiveDocument(document);
+
+        if (document.isArchived && this.isEditing) {
+          return this.goToDocumentCanonical();
+        }
 
         if (this.props.auth.user && !shareId) {
           if (!this.isEditing && document.publishedAt) {
@@ -200,27 +223,25 @@ class DocumentScene extends React.Component<Props> {
   handleCloseMoveModal = () => (this.moveModalOpen = false);
   handleOpenMoveModal = () => (this.moveModalOpen = true);
 
-  onSaveAndExit = () => {
-    this.onSave({ done: true, publish: true });
-  };
-
   onSave = async (
     options: { done?: boolean, publish?: boolean, autosave?: boolean } = {}
   ) => {
     let document = this.document;
     if (!document) return;
 
+    // prevent saves when we are already saving
+    if (document.isSaving) return;
+
     // get the latest version of the editor text value
     const text = this.getEditorText ? this.getEditorText() : document.text;
+
+    // prevent save before anything has been written (single hash is empty doc)
+    if (text.trim() === '#') return;
 
     // prevent autosave if nothing has changed
     if (options.autosave && document.text.trim() === text.trim()) return;
 
     document.text = text;
-    if (!document.allowSave) return;
-
-    // prevent autosave before anything has been written
-    if (options.autosave && !document.title && !document.id) return;
 
     let isNew = !document.id;
     this.isSaving = true;
@@ -245,9 +266,11 @@ class DocumentScene extends React.Component<Props> {
 
   updateIsDirty = debounce(() => {
     const document = this.document;
+    const editorText = this.getEditorText().trim();
 
-    this.isDirty =
-      !!document && this.getEditorText().trim() !== document.text.trim();
+    // a single hash is a doc with just an empty title
+    this.isEmpty = editorText === '#';
+    this.isDirty = !!document && editorText !== document.text.trim();
   }, IS_DIRTY_DELAY);
 
   onImageUploadStart = () => {
@@ -361,12 +384,21 @@ class DocumentScene extends React.Component<Props> {
                 isEditing={this.isEditing}
                 isSaving={this.isSaving}
                 isPublishing={this.isPublishing}
-                savingIsDisabled={!document.allowSave}
+                publishingIsDisabled={
+                  document.isSaving || this.isPublishing || this.isEmpty
+                }
+                savingIsDisabled={document.isSaving || this.isEmpty}
                 onDiscard={this.onDiscard}
                 onSave={this.onSave}
               />
             )}
-            <MaxWidth column auto>
+            <MaxWidth archived={document.isArchived} column auto>
+              {document.archivedAt && (
+                <Notice muted>
+                  Archived by {document.updatedBy.name}{' '}
+                  <Time dateTime={document.archivedAt} /> ago
+                </Notice>
+              )}
               <Editor
                 id={document.id}
                 key={embedsDisabled ? 'embeds-disabled' : 'embeds-enabled'}
@@ -377,13 +409,20 @@ class DocumentScene extends React.Component<Props> {
                 onImageUploadStop={this.onImageUploadStop}
                 onSearchLink={this.onSearchLink}
                 onChange={this.onChange}
-                onSave={this.onSaveAndExit}
+                onSave={this.onSave}
                 onCancel={this.onDiscard}
-                readOnly={!this.isEditing}
+                readOnly={!this.isEditing || document.isArchived}
                 toc={!revision}
                 ui={this.props.ui}
                 schema={schema}
               />
+              {!this.isEditing &&
+                !isShare && (
+                  <Backlinks
+                    documents={this.props.documents}
+                    document={document}
+                  />
+                )}
             </MaxWidth>
           </Container>
         </Container>
@@ -394,6 +433,8 @@ class DocumentScene extends React.Component<Props> {
 }
 
 const MaxWidth = styled(Flex)`
+  ${props =>
+    props.archived && `* { color: ${props.theme.textSecondary} !important; } `};
   padding: 0 16px;
   max-width: 100vw;
   width: 100%;

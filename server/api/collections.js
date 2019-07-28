@@ -7,6 +7,7 @@ import { Collection, CollectionUser, Team, User } from '../models';
 import { ValidationError, InvalidRequestError } from '../errors';
 import { exportCollection, exportCollections } from '../logistics';
 import policy from '../policies';
+import events from '../events';
 
 const { authorize } = policy;
 const router = new Router();
@@ -32,8 +33,15 @@ router.post('collections.create', auth(), async ctx => {
     private: isPrivate,
   });
 
+  events.add({
+    name: 'collections.create',
+    modelId: collection.id,
+    teamId: collection.teamId,
+    actorId: user.id,
+  });
+
   ctx.body = {
-    data: await presentCollection(ctx, collection),
+    data: await presentCollection(collection),
   };
 });
 
@@ -41,11 +49,11 @@ router.post('collections.info', auth(), async ctx => {
   const { id } = ctx.body;
   ctx.assertUuid(id, 'id is required');
 
-  const collection = await Collection.findById(id);
+  const collection = await Collection.findByPk(id);
   authorize(ctx.state.user, 'read', collection);
 
   ctx.body = {
-    data: await presentCollection(ctx, collection),
+    data: await presentCollection(collection),
   };
 });
 
@@ -54,14 +62,14 @@ router.post('collections.add_user', auth(), async ctx => {
   ctx.assertUuid(id, 'id is required');
   ctx.assertUuid(userId, 'userId is required');
 
-  const collection = await Collection.findById(id);
+  const collection = await Collection.findByPk(id);
   authorize(ctx.state.user, 'update', collection);
 
   if (!collection.private) {
     throw new InvalidRequestError('Collection must be private to add users');
   }
 
-  const user = await User.findById(userId);
+  const user = await User.findByPk(userId);
   authorize(ctx.state.user, 'read', user);
 
   await CollectionUser.create({
@@ -69,6 +77,14 @@ router.post('collections.add_user', auth(), async ctx => {
     userId,
     permission,
     createdById: ctx.state.user.id,
+  });
+
+  events.add({
+    name: 'collections.add_user',
+    modelId: userId,
+    collectionId: collection.id,
+    teamId: collection.teamId,
+    actorId: ctx.state.user.id,
   });
 
   ctx.body = {
@@ -81,17 +97,25 @@ router.post('collections.remove_user', auth(), async ctx => {
   ctx.assertUuid(id, 'id is required');
   ctx.assertUuid(userId, 'userId is required');
 
-  const collection = await Collection.findById(id);
+  const collection = await Collection.findByPk(id);
   authorize(ctx.state.user, 'update', collection);
 
   if (!collection.private) {
     throw new InvalidRequestError('Collection must be private to remove users');
   }
 
-  const user = await User.findById(userId);
+  const user = await User.findByPk(userId);
   authorize(ctx.state.user, 'read', user);
 
   await collection.removeUser(user);
+
+  events.add({
+    name: 'collections.remove_user',
+    modelId: userId,
+    collectionId: collection.id,
+    teamId: collection.teamId,
+    actorId: ctx.state.user.id,
+  });
 
   ctx.body = {
     success: true,
@@ -102,17 +126,13 @@ router.post('collections.users', auth(), async ctx => {
   const { id } = ctx.body;
   ctx.assertUuid(id, 'id is required');
 
-  const collection = await Collection.findById(id);
+  const collection = await Collection.findByPk(id);
   authorize(ctx.state.user, 'read', collection);
 
   const users = await collection.getUsers();
 
-  const data = await Promise.all(
-    users.map(async user => await presentUser(ctx, user))
-  );
-
   ctx.body = {
-    data,
+    data: users.map(presentUser),
   };
 });
 
@@ -121,7 +141,7 @@ router.post('collections.export', auth(), async ctx => {
   ctx.assertUuid(id, 'id is required');
 
   const user = ctx.state.user;
-  const collection = await Collection.findById(id);
+  const collection = await Collection.findByPk(id);
   authorize(user, 'export', collection);
 
   // async operation to create zip archive and email user
@@ -134,7 +154,7 @@ router.post('collections.export', auth(), async ctx => {
 
 router.post('collections.exportAll', auth(), async ctx => {
   const user = ctx.state.user;
-  const team = await Team.findById(user.teamId);
+  const team = await Team.findByPk(user.teamId);
   authorize(user, 'export', team);
 
   // async operation to create zip archive and email user
@@ -154,7 +174,7 @@ router.post('collections.update', auth(), async ctx => {
     ctx.assertHexColor(color, 'Invalid hex value (please use format #FFFFFF)');
 
   const user = ctx.state.user;
-  const collection = await Collection.findById(id);
+  const collection = await Collection.findByPk(id);
   authorize(user, 'update', collection);
 
   if (isPrivate && !collection.private) {
@@ -176,8 +196,15 @@ router.post('collections.update', auth(), async ctx => {
   collection.private = isPrivate;
   await collection.save();
 
+  events.add({
+    name: 'collections.update',
+    modelId: collection.id,
+    teamId: collection.teamId,
+    actorId: user.id,
+  });
+
   ctx.body = {
-    data: await presentCollection(ctx, collection),
+    data: presentCollection(collection),
   };
 });
 
@@ -196,9 +223,7 @@ router.post('collections.list', auth(), pagination(), async ctx => {
   });
 
   const data = await Promise.all(
-    collections.map(
-      async collection => await presentCollection(ctx, collection)
-    )
+    collections.map(async collection => await presentCollection(collection))
   );
 
   ctx.body = {
@@ -209,15 +234,23 @@ router.post('collections.list', auth(), pagination(), async ctx => {
 
 router.post('collections.delete', auth(), async ctx => {
   const { id } = ctx.body;
+  const user = ctx.state.user;
   ctx.assertUuid(id, 'id is required');
 
-  const collection = await Collection.findById(id);
-  authorize(ctx.state.user, 'delete', collection);
+  const collection = await Collection.findByPk(id);
+  authorize(user, 'delete', collection);
 
   const total = await Collection.count();
   if (total === 1) throw new ValidationError('Cannot delete last collection');
 
   await collection.destroy();
+
+  events.add({
+    name: 'collections.delete',
+    modelId: collection.id,
+    teamId: collection.teamId,
+    actorId: user.id,
+  });
 
   ctx.body = {
     success: true,

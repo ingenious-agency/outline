@@ -3,11 +3,12 @@ import * as React from 'react';
 import { observable } from 'mobx';
 import { inject, observer } from 'mobx-react';
 import { Redirect } from 'react-router-dom';
-import { MoreIcon, CollectionIcon, PrivateCollectionIcon } from 'outline-icons';
+import { PlusIcon, CollectionIcon, PrivateCollectionIcon } from 'outline-icons';
 
 import { newDocumentUrl } from 'utils/routeHelpers';
 import CollectionsStore from 'stores/CollectionsStore';
 import { DropdownMenu, DropdownMenuItem } from 'components/DropdownMenu';
+import Button from 'components/Button';
 
 type Props = {
   label?: React.Node,
@@ -22,15 +23,15 @@ class NewDocumentMenu extends React.Component<Props> {
     this.redirectTo = undefined;
   }
 
-  handleNewDocument = collection => {
-    this.redirectTo = newDocumentUrl(collection);
+  handleNewDocument = (collectionId: string) => {
+    this.redirectTo = newDocumentUrl(collectionId);
   };
 
   onOpen = () => {
     const { collections } = this.props;
 
     if (collections.orderedData.length === 1) {
-      this.handleNewDocument(collections.orderedData[0]);
+      this.handleNewDocument(collections.orderedData[0].id);
     }
   };
 
@@ -41,7 +42,13 @@ class NewDocumentMenu extends React.Component<Props> {
 
     return (
       <DropdownMenu
-        label={label || <MoreIcon />}
+        label={
+          label || (
+            <Button icon={<PlusIcon />} small>
+              New doc
+            </Button>
+          )
+        }
         onOpen={this.onOpen}
         {...rest}
       >
@@ -49,7 +56,7 @@ class NewDocumentMenu extends React.Component<Props> {
         {collections.orderedData.map(collection => (
           <DropdownMenuItem
             key={collection.id}
-            onClick={() => this.handleNewDocument(collection)}
+            onClick={() => this.handleNewDocument(collection.id)}
           >
             {collection.private ? (
               <PrivateCollectionIcon color={collection.color} />

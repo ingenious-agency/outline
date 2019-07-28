@@ -34,10 +34,10 @@ class Collections extends React.Component<Props> {
 
   @keydown('n')
   goToNewDocument() {
-    const activeCollection = this.props.collections.active;
-    if (!activeCollection) return;
+    const { activeCollectionId } = this.props.ui;
+    if (!activeCollectionId) return;
 
-    this.props.history.push(newDocumentUrl(activeCollection));
+    this.props.history.push(newDocumentUrl(activeCollectionId));
   }
 
   render() {
@@ -49,6 +49,7 @@ class Collections extends React.Component<Props> {
         {collections.orderedData.map(collection => (
           <CollectionLink
             key={collection.id}
+            documents={documents}
             collection={collection}
             activeDocument={documents.active}
             prefetchDocument={documents.prefetchDocument}
